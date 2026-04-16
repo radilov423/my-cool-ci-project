@@ -1,9 +1,7 @@
-name: Node.js CI
+name: Node.js CI with Docker
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
 
 jobs:
@@ -14,14 +12,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Обновили до Node 24 (как просил GitHub в предупреждении)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 24
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
 
       - name: Run tests
         run: npx vitest run
+
+      # НОВЫЙ ЭТАП: Проверяем сборку Docker-образа
+      - name: Build Docker Image
+        run: |
+          docker build -t my-app:${{ github.sha }} .
+          echo "Docker image built successfully!"
