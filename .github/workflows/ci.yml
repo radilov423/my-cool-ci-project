@@ -49,4 +49,7 @@ jobs:
           context: .
           push: true
           # Название образа будет: ghcr.io/твой-логин/my-cool-ci-project:latest
-          tags: ghcr.io/${{ github.repository_owner }}/my-cool-ci-project:latest
+          # Теперь мы создаем сразу два тэга: 'latest' и уникальный по SHA коммита
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/my-cool-ci-project:latest
+            ghcr.io/${{ github.repository_owner }}/my-cool-ci-project:${{ github.sha }}
