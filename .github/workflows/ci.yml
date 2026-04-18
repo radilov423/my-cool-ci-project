@@ -1,40 +1,50 @@
-name: Node.js CI with Docker
+name: Advanced CI/CD
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Позволяем GitHub останавливать старые запуски, если ты сделал новый пуш (экономит ресурсы)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  # ПЕРВАЯ ЗАДАЧА: Проверка кода
+  check-quality:
     runs-on: ubuntu-latest
-    # ДОБАВЬ ЭТИ СТРОКИ:
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm' # Включаем автоматическое кэширование библиотек
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Lint
+        run: npm run lint
+
+      - name: Run Tests
+        run: npm test
+
+  # ВТОРАЯ ЗАДАЧА: Сборка и Публикация Docker
+  build-and-push:
+    # ОЧЕНЬ ВАЖНО: эта задача запустится ТОЛЬКО если первая (check-quality) прошла успешно
+    needs: check-quality
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Обновили до Node 24 (как просил GitHub в предупреждении)
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npx vitest run
-
-      # НОВЫЙ ЭТАП: Проверяем сборку Docker-образа
-      - name: Build Docker Image
-        run: |
-          docker build -t my-app:${{ github.sha }} .
-          echo "Docker image built successfully!"
-      # 5. Логинимся в реестр GitHub (используем встроенный секретный токен)
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -42,14 +52,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 6. Собираем и сразу ПУБЛИКУЕМ образ
-      - name: Build and push Docker image
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Название образа будет: ghcr.io/твой-логин/my-cool-ci-project:latest
-          # Теперь мы создаем сразу два тэга: 'latest' и уникальный по SHA коммита
           tags: |
             ghcr.io/${{ github.repository_owner }}/my-cool-ci-project:latest
             ghcr.io/${{ github.repository_owner }}/my-cool-ci-project:${{ github.sha }}
