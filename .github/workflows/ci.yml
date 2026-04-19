@@ -35,6 +35,18 @@ jobs:
 
       - name: Run Tests
         run: npm test
+        env:
+          SUPER_SECRET_KEY: ${{ secrets.MY_API_KEY }}
+          
+      - name: Upload Test Results
+        if: always() # Этот шаг выполнится даже если тесты упали (что очень важно!)
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            # Здесь указываем, какие файлы или папки сохранить
+            package.json
+            # В реальном проекте здесь был бы путь к папке /coverage или /reports
 
   # ВТОРАЯ ЗАДАЧА: Сборка и Публикация Docker
   build-and-push:
